@@ -16,6 +16,7 @@ setup(
     license="MIT",
     packages=find_packages(),
     py_modules=["remerkleable"],
+    package_data={'remerkleable': ['py.typed']},
     tests_require=[],
     extras_require={
         "testing": ["pytest"],
