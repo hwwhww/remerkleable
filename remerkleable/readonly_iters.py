@@ -1,4 +1,4 @@
-from typing import List as PyList, Optional, Type, Sequence
+from typing import List as PyList, Optional, Type, Sequence, Generator, Any
 from remerkleable.core import BasicView, View
 from remerkleable.tree import Node, Root, RootNode, ZERO_ROOT
 
@@ -15,7 +15,7 @@ class BitfieldIter(object):
     currentRoot: Root
     stack: PyList[Optional[Node]]
 
-    def __init__(self, anchor: Node, depth: int, length: int):
+    def __init__(self, anchor: Node, depth: int, length: int) -> None:
         self.anchor = anchor
         self.depth = depth
         self.length = length
@@ -28,7 +28,7 @@ class BitfieldIter(object):
         if limit < length:
             raise Exception(f"cannot handle iterate {length} bits in subtree of depth {depth} deep (limit {limit} bits)")
 
-    def __iter__(self):
+    def __iter__(self) -> 'BitfieldIter':
         self.i = 0
         self.j = 0
         self.rootIndex = 0
@@ -36,7 +36,7 @@ class BitfieldIter(object):
         self.stack = [None] * self.depth
         return self
 
-    def __next__(self):
+    def __next__(self) -> bool:
         # done yet?
         if self.i >= self.length:
             raise StopIteration
@@ -63,6 +63,7 @@ class BitfieldIter(object):
 
             # then move to the right from that upper previously remembered left-hand node
             node = self.stack[stackIndex]
+            assert node is not None
             node = node.get_right()
             stackIndex += 1
         else:
@@ -105,7 +106,7 @@ class PackedIter(object):
     rootIndex: int
     length: int
     per_node: int
-    currentRoot: RootNode
+    currentRoot: Node
     elem_type: Type[BasicView]
     stack: PyList[Optional[Node]]
 
@@ -128,15 +129,15 @@ class PackedIter(object):
             raise Exception(f"cannot handle iterate length {length} bottom subviews ({self.per_node} per node) "
                             f"in subtree of depth {depth} deep (limit {limit} subviews)")
 
-    def __iter__(self):
+    def __iter__(self) -> 'PackedIter':
         self.i = 0
         self.j = self.per_node
         self.rootIndex = 0
-        self.currentRoot = RootNode(ZERO_ROOT)
+        self.currentRoot: Node = RootNode(ZERO_ROOT)
         self.stack = [None] * self.depth
         return self
 
-    def __next__(self):
+    def __next__(self) -> BasicView:
         # done yet?
         if self.i >= self.length:
             raise StopIteration
@@ -160,6 +161,7 @@ class PackedIter(object):
 
             # then move to the right from that upper previously remembered left-hand node
             node = self.stack[stackIndex]
+            assert node is not None
             node = node.get_right()
             stackIndex += 1
         else:
@@ -215,12 +217,12 @@ class NodeIter(object):
             raise Exception(f"cannot handle iterate length {length} bottom nodes "
                             f"in subtree of depth {depth} deep (limit {limit} nodes)")
 
-    def __iter__(self):
+    def __iter__(self) -> 'NodeIter':
         self.i = 0
         self.stack = [None] * self.depth
         return self
 
-    def __next__(self):
+    def __next__(self) -> Node:
         # done yet?
         if self.i >= self.length:
             raise StopIteration
@@ -237,6 +239,7 @@ class NodeIter(object):
 
             # then move to the right from that upper previously remembered left-hand node
             node = self.stack[stackIndex]
+            assert node is not None
             node = node.get_right()
             stackIndex += 1
         else:
@@ -264,7 +267,7 @@ class ComplexElemIter(NodeIter):
         super().__init__(anchor, depth, length)
         self.reused_view = elem_type.default(None)
 
-    def __next__(self):
+    def __next__(self) -> View:
         node = super().__next__()
         self.reused_view.set_backing(node)
         return self.reused_view
@@ -279,7 +282,7 @@ class ComplexFreshElemIter(NodeIter):
         super().__init__(anchor, depth, length)
         self.elem_type = elem_type
 
-    def __next__(self):
+    def __next__(self) -> View:
         node = super().__next__()
         return self.elem_type.view_from_backing(node, None)
 
@@ -293,7 +296,7 @@ class ContainerElemIter(NodeIter):
         super().__init__(anchor, depth, len(elem_types))
         self.elem_types = elem_types
 
-    def __next__(self):
+    def __next__(self) -> View:
         i = self.i
         node = super().__next__()
         return self.elem_types[i].view_from_backing(node, None)

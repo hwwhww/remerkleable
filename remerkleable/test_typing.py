@@ -13,7 +13,7 @@ from remerkleable.core import BasicView, View
 from remerkleable.tree import get_depth
 
 
-def expect_op_error(fn, msg):
+def expect_op_error(fn, msg) -> None:
     try:
         fn()
         raise AssertionError(msg)
@@ -21,7 +21,7 @@ def expect_op_error(fn, msg):
         pass
 
 
-def test_subclasses():
+def test_subclasses() -> None:
     for u in [uint8, uint16, uint32, uint64, uint128, uint256]:
         assert issubclass(u, int)
         assert issubclass(u, View)
@@ -46,7 +46,7 @@ def test_basic_instances():
     assert isinstance(bit(False), boolean)
 
 
-def test_basic_value_bounds():
+def test_basic_value_bounds() -> None:
     max = {
         boolean: 2 ** 1,
         bit: 2 ** 1,
@@ -98,7 +98,7 @@ def test_basic_value_bounds():
         expect_op_error(lambda: k(v - 1) / 2.0, f"no __truediv__ allowed: type: {k}")
 
 
-def test_container():
+def test_container() -> None:
     class Foo(Container):
         a: uint8
         b: uint32
@@ -168,7 +168,7 @@ def test_container():
         pass
 
 
-def test_container_unpack():
+def test_container_unpack() -> None:
     class Foo(Container):
         a: uint64
         b: uint8
@@ -179,7 +179,7 @@ def test_container_unpack():
     assert b == 42
 
 
-def test_list():
+def test_list() -> None:
     typ = List[uint64, 128]
     assert issubclass(typ, List)
     assert issubclass(typ, View)
@@ -246,7 +246,7 @@ def test_list():
         pass
 
 
-def test_bytesn_subclass():
+def test_bytesn_subclass() -> None:
     class Root(Bytes32):
         pass
 
@@ -261,7 +261,7 @@ def test_bytesn_subclass():
     assert len(Bytes32() + Bytes48()) == 80
 
 
-def test_uint_math():
+def test_uint_math() -> None:
     assert uint8(0) + uint8(uint32(16)) == uint8(16)  # allow explicit casting to make invalid addition valid
 
     expect_op_error(lambda: uint8(0) - uint8(1), "no underflows allowed")
@@ -273,7 +273,7 @@ def test_uint_math():
     assert type(uint32(1234) + 56) == uint32
 
 
-def test_container_depth():
+def test_container_depth() -> None:
     class SingleField(Container):
         foo: uint32
 
@@ -312,11 +312,11 @@ def test_container_depth():
 
 @pytest.mark.parametrize("count, depth", [
     (0, 0), (1, 0), (2, 1), (3, 2), (4, 2), (5, 3), (6, 3), (7, 3), (8, 3), (9, 4)])
-def test_tree_depth(count: int, depth: int):
+def test_tree_depth(count: int, depth: int) -> None:
     assert get_depth(count) == depth
 
 
-def test_paths():
+def test_paths() -> None:
     class FourField(Container):
         foo: uint32
         bar: uint64
@@ -352,7 +352,7 @@ def test_paths():
         pass
 
 
-def test_bitvector():
+def test_bitvector() -> None:
     for size in [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64, 65, 511, 512, 513, 1023, 1024, 1025]:
         for i in range(size):
             b = Bitvector[size]()
@@ -365,7 +365,7 @@ def test_bitvector():
             assert bool(b[i]) == False, "unset %d / %d" % (i, size)
 
 
-def test_bitvector_iter():
+def test_bitvector_iter() -> None:
     rng = Random(123)
     for size in [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64, 65, 511, 512, 513, 1023, 1024, 1025]:
         # get a somewhat random bitvector
@@ -376,7 +376,7 @@ def test_bitvector_iter():
             assert bool(bit) == bools[i]
 
 
-def test_bitlist():
+def test_bitlist() -> None:
     for size in [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64, 65, 511, 512, 513, 1023, 1024, 1025]:
         for i in range(size):
             b = Bitlist[size](False for i in range(size))
@@ -389,7 +389,7 @@ def test_bitlist():
             assert bool(b[i]) == False, "unset %d / %d" % (i, size)
 
 
-def test_bitlist_iter():
+def test_bitlist_iter() -> None:
     rng = Random(123)
     for limit in [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64, 65, 511, 512, 513, 1023, 1024, 1025]:
         for length in [0, 1, limit // 2, limit]:

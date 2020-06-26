@@ -11,7 +11,7 @@ RV = TypeVar('RV', bound="RawBytesView")
 
 
 class RawBytesView(bytes, View):
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args: Any, **kwargs: Any) -> 'RawBytesView':
         if len(args) == 0:
             return super().__new__(cls, cls.default_bytes(), **kwargs)
         elif len(args) == 1:
@@ -26,9 +26,9 @@ class RawBytesView(bytes, View):
                 data = list(bytes.fromhex(args))
             else:
                 data = bytes(args)
-            return super().__new__(cls, data, **kwargs)
+            return super().__new__(cls, data, **kwargs)  # type: ignore
         else:
-            return super().__new__(cls, bytes(args), **kwargs)
+            return super().__new__(cls, bytes(args), **kwargs)  # type: ignore
 
     @classmethod
     def default_bytes(cls) -> bytes:
@@ -42,13 +42,13 @@ class RawBytesView(bytes, View):
     def tree_depth(cls) -> int:
         raise NotImplementedError
 
-    def set_backing(self, value):
+    def set_backing(self, value: Node) -> None:
         raise Exception("cannot change the backing of a raw-bytes-like view, init a new view instead")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "0x" + self.hex()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "0x" + self.hex()
 
     @classmethod
@@ -75,14 +75,14 @@ BV = TypeVar('BV', bound="ByteVector")
 
 
 class ByteVector(RawBytesView, FixedByteLengthViewHelper, View):
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args: Any, **kwargs: Any) -> 'ByteVector':
         byte_len = cls.vector_length()
         out = super().__new__(cls, *args, **kwargs)
         if len(out) != byte_len:
             raise Exception(f"incorrect byte length: {len(out)}, expected {byte_len}")
         return out
 
-    def __class_getitem__(cls, length) -> Type["ByteVector"]:
+    def __class_getitem__(cls, length: int) -> Type["ByteVector"]:
         chunk_count = (length + 31) // 32
         tree_depth = get_depth(chunk_count)
 
@@ -102,7 +102,7 @@ class ByteVector(RawBytesView, FixedByteLengthViewHelper, View):
         return SpecialByteVectorView
 
     @classmethod
-    def vector_length(cls):
+    def vector_length(cls) -> int:
         return cls.type_byte_length()
 
     @classmethod
@@ -164,14 +164,14 @@ BL = TypeVar('BL', bound="ByteList")
 
 class ByteList(RawBytesView, FixedByteLengthViewHelper, View):
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args: Any, **kwargs: Any) -> 'ByteList':
         byte_limit = cls.limit()
         out = super().__new__(cls, *args, **kwargs)
         if len(out) > byte_limit:
             raise Exception(f"incorrect byte length: {len(out)}, cannot be more than limit {byte_limit}")
         return out
 
-    def __class_getitem__(cls, limit) -> Type["ByteList"]:
+    def __class_getitem__(cls, limit: int) -> Type["RawBytesView"]:
         chunk_count = (limit + 31) // 32
         contents_depth = get_depth(chunk_count)
 

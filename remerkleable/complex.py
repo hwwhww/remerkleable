@@ -1,5 +1,5 @@
 from typing import NamedTuple, cast, List as PyList, Dict, Any, BinaryIO, Optional, TypeVar, Type, Protocol, \
-    runtime_checkable
+    runtime_checkable, Union, Sequence, overload
 from types import GeneratorType
 from textwrap import indent
 from collections.abc import Sequence as ColSequence
@@ -19,7 +19,7 @@ def decode_offset(stream: BinaryIO) -> uint32:
     return cast(uint32, uint32.deserialize(stream, OFFSET_BYTE_LENGTH))
 
 
-def encode_offset(stream: BinaryIO, offset: int):
+def encode_offset(stream: BinaryIO, offset: int) -> int:
     return uint32(offset).serialize(stream)
 
 
@@ -192,7 +192,7 @@ class MonoSubtreeView(ColSequence, ComplexView):
     def navigate_view(self, key: Any) -> View:
         return self.__getitem__(key)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.length()
 
     def __add__(self, other):
@@ -201,16 +201,20 @@ class MonoSubtreeView(ColSequence, ComplexView):
         else:
             return list(chain(self, other))
 
-    def __getitem__(self, k):
-        if isinstance(k, slice):
+    def __getitem__(self, k: Union[int, slice]) -> Union[View, M]:
+        if isinstance(k, int):
+            return self.get(k)
+        elif isinstance(k, slice):
             start = 0 if k.start is None else k.start
             end = self.length() if k.stop is None else k.stop
             return [self.get(i) for i in range(start, end)]
         else:
-            return self.get(k)
+            ValueError(f"Wrong key {k}")
 
-    def __setitem__(self, k, v):
-        if type(k) == slice:
+    def __setitem__(self, k: Union[int, slice], v: Union[View, M]) -> None:
+        if isinstance(k, int):
+            self.set(k, v)
+        elif isinstance(k, slice):
             i = 0 if k.start is None else k.start
             end = self.length() if k.stop is None else k.stop
             for item in v:
@@ -219,9 +223,9 @@ class MonoSubtreeView(ColSequence, ComplexView):
             if i != end:
                 raise Exception("failed to do full slice-set, not enough values")
         else:
-            self.set(k, v)
+            ValueError(f"Wrong key {k} and value {v}")
 
-    def _repr_sequence(self):
+    def _repr_sequence(self) -> str:
         length: int
         try:
             length = self.length()
@@ -253,7 +257,7 @@ class MonoSubtreeView(ColSequence, ComplexView):
 
 
 class List(MonoSubtreeView):
-    def __new__(cls, *args, backing: Optional[Node] = None, hook: Optional[ViewHook] = None, **kwargs):
+    def __new__(cls, *args, backing: Optional[Node] = None, hook: Optional[ViewHook] = None, **kwargs: Any) -> 'List':
         if backing is not None:
             if len(args) != 0:
                 raise Exception("cannot have both a backing and elements to init List")
@@ -330,7 +334,7 @@ class List(MonoSubtreeView):
         else:
             return sum(OFFSET_BYTE_LENGTH + cast(View, el).value_byte_length() for el in iter(self))
 
-    def append(self, v: View):
+    def append(self, v: View) -> None:
         ll = self.length()
         if ll >= self.__class__.limit():
             raise Exception("list is maximum capacity, cannot append")
@@ -366,7 +370,7 @@ class List(MonoSubtreeView):
         next_backing = set_length(new_length)
         self.set_backing(next_backing)
 
-    def pop(self):
+    def pop(self) -> None:
         ll = self.length()
         if ll == 0:
             raise Exception("list is empty, cannot pop")
@@ -489,7 +493,7 @@ class List(MonoSubtreeView):
 
 
 class Vector(MonoSubtreeView):
-    def __new__(cls, *args, backing: Optional[Node] = None, hook: Optional[ViewHook] = None, **kwargs):
+    def __new__(cls, *args, backing: Optional[Node] = None, hook: Optional[ViewHook] = None, **kwargs) -> 'Vector':
         if backing is not None:
             if len(args) != 0:
                 raise Exception("cannot have both a backing and elements to init Vector")
@@ -596,7 +600,7 @@ class Vector(MonoSubtreeView):
         else:
             return sum(OFFSET_BYTE_LENGTH + cast(View, el).value_byte_length() for el in iter(self))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self._repr_sequence()
 
     @classmethod
@@ -684,7 +688,7 @@ class Container(ComplexView):
     _empty_annotations: bool
     _field_indices: Dict[str, int]
 
-    def __new__(cls, *args, backing: Optional[Node] = None, hook: Optional[ViewHook] = None, **kwargs):
+    def __new__(cls, *args: Any, backing: Optional[Node] = None, hook: Optional[ViewHook] = None, **kwargs) -> 'BackedView':
         if backing is not None:
             if len(args) != 0:
                 raise Exception("cannot have both a backing and elements to init List")
@@ -709,7 +713,7 @@ class Container(ComplexView):
         out = super().__new__(cls, backing=backing, hook=hook)
         return out
 
-    def __init_subclass__(cls, *args, **kwargs):
+    def __init_subclass__(cls, *args: Any, **kwargs: Any) -> None:
         super().__init_subclass__(*args, **kwargs)
         cls._field_indices = {fkey: i for i, fkey in enumerate(cls.__annotations__.keys()) if fkey[0] != '_'}
         if len(cls._field_indices) == 0:
@@ -782,7 +786,7 @@ class Container(ComplexView):
                     total += cast(View, getattr(self, fkey)).value_byte_length()
             return total
 
-    def __getattr__(self, item):
+    def __getattr__(self, item: str) -> View:
         if item[0] == '_':
             return super().__getattribute__(item)
         else:
@@ -792,7 +796,7 @@ class Container(ComplexView):
                 raise AttributeError(f"unknown attribute {item}")
             return super().get(i)
 
-    def __setattr__(self, key, value):
+    def __setattr__(self, key: str, value: View) -> None:
         if key[0] == '_':
             super().__setattr__(key, value)
         else:
@@ -813,7 +817,7 @@ class Container(ComplexView):
         except NavigationError:
             return f"{field_start} *omitted from partial*"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}(Container)\n" + '\n'.join(
             indent(self._get_field_val_repr(fkey, ftype), '  ')
             for fkey, ftype in self.__class__.fields().items())
@@ -823,7 +827,7 @@ class Container(ComplexView):
         return f"{cls.__name__}(Container)\n" + '\n'.join(
             ('  ' + fkey + ': ' + ftype.__name__) for fkey, ftype in cls.fields().items())
 
-    def __iter__(self):
+    def __iter__(self) -> ContainerElemIter:
         tree_depth = self.tree_depth()
         backing = self.get_backing()
         return ContainerElemIter(backing, tree_depth, list(self.__class__.fields().values()))
@@ -882,7 +886,7 @@ class Container(ComplexView):
                 v.serialize(stream)
             else:
                 encode_offset(stream, written)
-                written += v.serialize(temp_dyn_stream)  # type: ignore
+                written += v.serialize(temp_dyn_stream)
         if not is_fixed_size:
             temp_dyn_stream.seek(0)
             stream.write(temp_dyn_stream.read(written))

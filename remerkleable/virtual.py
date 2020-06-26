@@ -54,5 +54,5 @@ class VirtualNode(RebindableNode, Node):
     def merkle_root(self) -> Root:
         return self._root
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"0x{self._root.hex()}"

@@ -331,28 +331,28 @@ test_data = [
 
 
 @pytest.mark.parametrize("name, typ, value, serialized, root, obj", test_data)
-def test_to_obj(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType):
+def test_to_obj(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType) -> None:
     assert value.to_obj() == obj
 
 
 @pytest.mark.parametrize("name, typ, value, serialized, root, obj", test_data)
-def test_from_obj(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType):
+def test_from_obj(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType) -> None:
     assert typ.from_obj(obj) == value
 
 
 @pytest.mark.parametrize("name, typ, value, serialized, root, obj", test_data)
-def test_json_dump(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType):
+def test_json_dump(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType) -> None:
     assert json.dumps(value.to_obj()) == json.dumps(obj)
 
 
 @pytest.mark.parametrize("name, typ, value, serialized, root, obj", test_data)
-def test_json_load(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType):
+def test_json_load(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType) -> None:
     # Bigger round trip: check if a json-like obj can be parsed correctly.
     assert value.from_obj(json.loads(json.dumps(obj))).to_obj() == obj
 
 
 @pytest.mark.parametrize("name, typ, value, serialized, root, obj", test_data)
-def test_type_bounds(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType):
+def test_type_bounds(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType) -> None:
     byte_len = len(bytes.fromhex(serialized))
     assert typ.min_byte_length() <= byte_len <= typ.max_byte_length()
     if typ.is_fixed_byte_length():
@@ -360,12 +360,12 @@ def test_type_bounds(name: str, typ: Type[View], value: View, serialized: str, r
 
 
 @pytest.mark.parametrize("name, typ, value, serialized, root, obj", test_data)
-def test_value_byte_length(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType):
+def test_value_byte_length(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType) -> None:
     assert value.value_byte_length() == len(bytes.fromhex(serialized))
 
 
 @pytest.mark.parametrize("name, typ, value, serialized, root, obj", test_data)
-def test_serialize(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType):
+def test_serialize(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType) -> None:
     stream = io.BytesIO()
     length = value.serialize(stream)
     stream.seek(0)
@@ -375,18 +375,18 @@ def test_serialize(name: str, typ: Type[View], value: View, serialized: str, roo
 
 
 @pytest.mark.parametrize("name, typ, value, serialized, root, obj", test_data)
-def test_encode_bytes(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType):
+def test_encode_bytes(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType) -> None:
     encoded = value.encode_bytes()
     assert encoded.hex() == serialized
 
 
 @pytest.mark.parametrize("name, typ, value, serialized, root, obj", test_data)
-def test_hash_tree_root(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType):
+def test_hash_tree_root(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType) -> None:
     assert value.hash_tree_root().hex() == root
 
 
 @pytest.mark.parametrize("name, typ, value, serialized, root, obj", test_data)
-def test_deserialize(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType):
+def test_deserialize(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType) -> None:
     stream = io.BytesIO()
     bytez = bytes.fromhex(serialized)
     stream.write(bytez)
@@ -396,14 +396,14 @@ def test_deserialize(name: str, typ: Type[View], value: View, serialized: str, r
 
 
 @pytest.mark.parametrize("name, typ, value, serialized, root, obj", test_data)
-def test_decode_bytes(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType):
+def test_decode_bytes(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType) -> None:
     bytez = bytes.fromhex(serialized)
     decoded = typ.decode_bytes(bytez)
     assert decoded == value
 
 
 @pytest.mark.parametrize("name, typ, value, serialized, root, obj", test_data)
-def test_readonly_iters(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType):
+def test_readonly_iters(name: str, typ: Type[View], value: View, serialized: str, root: str, obj: ObjType) -> None:
     if hasattr(value, 'readonly_iter'):
         r_iter = value.readonly_iter()
         i = 0

@@ -1,4 +1,4 @@
-from typing import cast, BinaryIO, List as PyList, Any, TypeVar, Type
+from typing import cast, BinaryIO, List as PyList, Any, TypeVar, Type, Union, Sequence
 from types import GeneratorType
 from collections.abc import Sequence as ColSequence
 import io
@@ -54,25 +54,31 @@ class BitsView(BackedView, ColSequence):
         new_chunk = _new_chunk_with_bit(chunk, i & 0xff, v)
         self.set_backing(chunk_setter_link(new_chunk))
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.length()
 
-    def __getitem__(self, k):
+    def __getitem__(self, k: Union[int, slice]) -> Union[boolean, Sequence[boolean]]:
         length = self.length()
-        if isinstance(k, slice):
+        if isinstance(k, int):
+            return self.get(k)
+        else:
+            length = self.length()
+            result: PyList[boolean]
             start = 0 if k.start is None else k.start
             if start < 0:
                 start = start % length
             end = length if k.stop is None else k.stop
             if end < 0:
                 end = end % length
-            return [self.get(i) for i in range(start, end)]
-        else:
-            return self.get(k)
+            result = [self.get(i) for i in range(start, end)]
+            return result
 
-    def __setitem__(self, k, v):
-        length = self.length()
-        if type(k) == slice:
+    def __setitem__(self, k: Union[int, slice], v: [bool, boolean, Sequence[boolean]]) -> None:
+        if isinstance(k, int):
+            length = self.length()
+            self.set(k, v)
+        elif isinstance(k, slice):
+            length = self.length()
             i = 0 if k.start is None else k.start
             end = length if k.stop is None else k.stop
             for item in v:
@@ -81,7 +87,7 @@ class BitsView(BackedView, ColSequence):
             if i != end:
                 raise Exception("failed to do full slice-set, not enough values")
         else:
-            self.set(k, v)
+            raise ValueError(f"Wrong input k: {k}, v: {v}")
 
     def encode_bytes(self) -> bytes:
         stream = io.BytesIO()
@@ -109,12 +115,12 @@ class BitsView(BackedView, ColSequence):
     def to_obj(self) -> ObjType:
         return '0x' + self.encode_bytes().hex()
 
-    def navigate_view(self, key: Any) -> View:
+    def navigate_view(self, key: int) -> boolean:
         return boolean(self.__getitem__(key))
 
 
 class Bitlist(BitsView):
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args: Any, **kwargs: Any) -> 'Bitlist':
         vals = list(args)
         if len(vals) > 0:
             if len(vals) == 1 and isinstance(vals[0], (GeneratorType, list, tuple)):
@@ -128,7 +134,7 @@ class Bitlist(BitsView):
             kwargs['backing'] = PairNode(contents, uint256(len(input_bits)).get_backing())
         return super().__new__(cls, **kwargs)
 
-    def __class_getitem__(cls, limit) -> Type["Bitlist"]:
+    def __class_getitem__(cls, limit: int) -> Type["Bitlist"]:
         class SpecialBitlistView(Bitlist):
             @classmethod
             def limit(cls) -> int:
@@ -136,7 +142,7 @@ class Bitlist(BitsView):
 
         return SpecialBitlistView
 
-    def __iter__(self):
+    def __iter__(self) -> BitfieldIter:
         return BitfieldIter(self.get_backing().get_left(), self.contents_depth(), self.length())
 
     @classmethod
@@ -177,7 +183,7 @@ class Bitlist(BitsView):
         ll = cast(uint256, uint256.view_from_backing(node=ll_node, hook=None))
         return int(ll)
 
-    def append(self, v: boolean):
+    def append(self, v: boolean) -> None:
         ll = self.length()
         if ll >= self.__class__.limit():
             raise Exception("list is maximum capacity, cannot append")
@@ -196,7 +202,7 @@ class Bitlist(BitsView):
         next_backing = set_length(new_length)
         self.set_backing(next_backing)
 
-    def pop(self):
+    def pop(self) -> None:
         ll = self.length()
         if ll == 0:
             raise Exception("list is empty, cannot pop")
@@ -242,7 +248,7 @@ class Bitlist(BitsView):
         except NavigationError:
             raise IndexError
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         try:
             length = self.length()
         except NavigationError:
@@ -337,7 +343,7 @@ class Bitlist(BitsView):
 
 
 class Bitvector(BitsView, FixedByteLengthViewHelper):
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args: Any, **kwargs: Any) -> 'BackedView':  # type: ignore
         vals = list(args)
         if len(vals) > 0:
             if len(vals) == 1 and isinstance(vals[0], (GeneratorType, list, tuple)):
@@ -350,7 +356,7 @@ class Bitvector(BitsView, FixedByteLengthViewHelper):
             kwargs['backing'] = subtree_fill_to_contents(input_nodes, cls.tree_depth())
         return super().__new__(cls, **kwargs)
 
-    def __class_getitem__(cls, length) -> Type["Bitvector"]:
+    def __class_getitem__(cls, length: int) -> Type["Bitvector"]:
         if length <= 0:
             raise Exception(f"invalid bitvector length: {length}")
 
@@ -361,7 +367,7 @@ class Bitvector(BitsView, FixedByteLengthViewHelper):
 
         return SpecialBitvectorView
 
-    def __iter__(self):
+    def __iter__(self) -> BitfieldIter:
         return BitfieldIter(self.get_backing(), self.__class__.tree_depth(), self.__class__.vector_length())
 
     @classmethod
@@ -397,7 +403,7 @@ class Bitvector(BitsView, FixedByteLengthViewHelper):
             raise IndexError
         super().set(i, v)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         length = self.length()
         try:
             bitstr = ''.join('1' if self.get(i) else '0' for i in range(length))

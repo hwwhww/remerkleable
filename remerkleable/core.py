@@ -15,7 +15,7 @@ V = TypeVar('V', bound="View")
 
 
 class ViewMeta(_ProtocolMeta):
-    def __truediv__(self, other) -> "Path":
+    def __truediv__(self, other: Any) -> "Path":
         return Path.from_raw_path(anchor=cast(Type[View], self), path=[other])
 
 
@@ -46,7 +46,7 @@ class Path(object):
             parsed_path.append((step, t))
         return Path(anchor=anchor, path=parsed_path)
 
-    def __truediv__(self, other) -> "Path":
+    def __truediv__(self, other: Any) -> "Path":
         if isinstance(other, Path):
             return Path(anchor=self.anchor, path=self.path + other.path)
         else:
@@ -140,7 +140,7 @@ class View(Protocol, metaclass=ViewMeta):
     def get_backing(self) -> Node:
         raise NotImplementedError
 
-    def set_backing(self, value):
+    def set_backing(self, value: Node) -> None:
         raise NotImplementedError
 
     def copy(self: V) -> V:
@@ -153,7 +153,7 @@ class View(Protocol, metaclass=ViewMeta):
     def value_byte_length(self) -> int:
         raise NotImplementedError
 
-    def __bytes__(self):
+    def __bytes__(self) -> bytes:
         return self.encode_bytes()
 
     def encode_bytes(self) -> bytes:
@@ -176,13 +176,13 @@ class View(Protocol, metaclass=ViewMeta):
     def hash_tree_root(self) -> Root:
         return self.get_backing().merkle_root()
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         # TODO: should we check types here?
         if not isinstance(other, View):
             other = self.__class__.coerce_view(other)
         return self.hash_tree_root() == other.hash_tree_root()
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.hash_tree_root())
 
 
@@ -221,7 +221,7 @@ class BackedView(View):
     def view_from_backing(cls: Type[BackedV], node: Node, hook: Optional[ViewHook] = None) -> BackedV:
         return cls(backing=node, hook=hook)
 
-    def __new__(cls, backing: Optional[Node] = None, hook: Optional[ViewHook] = None, **kwargs):
+    def __new__(cls, backing: Optional[Node] = None, hook: Optional[ViewHook] = None, **kwargs: Any) -> 'BackedView':
         if backing is None:
             backing = cls.default_node()
         out = super().__new__(cls, **kwargs)  # type: ignore
@@ -232,7 +232,7 @@ class BackedView(View):
     def get_backing(self) -> Node:
         return self._backing
 
-    def set_backing(self, value):
+    def set_backing(self, value: Node) -> None:
         self._backing = value
         # Propagate up the change if the view is hooked to a super view
         if self._hook is not None:
@@ -275,12 +275,12 @@ class BasicView(FixedByteLengthViewHelper, Protocol):
         bytez = self.encode_bytes()
         return RootNode(Root(bytez + b"\x00" * (32 - len(bytez))))
 
-    def set_backing(self, value):
+    def set_backing(self, value: Node) -> None:
         raise Exception("cannot change the backing of a basic view")
 
 
 # recipe from more-itertools, should have been in itertools really.
-def grouper(items: Iterable, n: int, fillvalue=None) -> Iterable[Tuple]:
+def grouper(items: Iterable[Any], n: int, fillvalue: Any = None) -> Iterable[Any]:
     """Collect data into fixed-length chunks or blocks
        grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"""
     args = [iter(items)] * n
@@ -304,7 +304,7 @@ def byte_int_to_byte(b: int) -> bytes:
 
 def pack_bits_to_chunks(items: Iterable[bool]) -> PyList[Node]:
     # grouper returns tuples of N=8, bits_to_byte_int takes tuples of 8, but mypy does not follow.
-    return pack_byte_ints_to_chunks(map(bits_to_byte_int, grouper(items, 8, fillvalue=0)))  # type: ignore
+    return pack_byte_ints_to_chunks(map(bits_to_byte_int, grouper(items, 8, fillvalue=0)))
 
 
 def pack_byte_ints_to_chunks(items: Iterable[int]) -> PyList[Node]:

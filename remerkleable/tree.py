@@ -1,4 +1,4 @@
-from typing import Callable, NewType, List, Optional, Protocol, TypeVar, Iterable, Iterator, Tuple
+from typing import Callable, NewType, List, Optional, Protocol, TypeVar, Iterable, Iterator, Tuple, Generator
 from hashlib import sha256
 
 
@@ -33,7 +33,7 @@ def gindex_bit_iter(gindex: Gindex) -> Tuple[Iterator[bool], int]:
         raise Exception(f"invalid gindex: {gindex}")
     bit_len = gindex.bit_length()
 
-    def iter_bits():
+    def iter_bits() -> Generator:
         if bit_len <= 1:
             return
         shift_v = 1 << (bit_len - 2)
@@ -314,7 +314,7 @@ class RootNode(Node):
     def merkle_root(self) -> Root:
         return self._root
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"0x{self._root.hex()}"
 
 
